@@ -36,7 +36,7 @@ def news_agenda_fetch(folder_path, n=4):
 def fuzzy_search(agendas, keywords):
     """
     Perform fuzzy search on the agenda text corpus and return
-    the single best-matching agenda (dict with one entry).
+    the four best-matching agenda ranked (list of dict {"link": str, "text": str).
     """
 
     best_match = [{}, {}, {}, {}]

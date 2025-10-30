@@ -34,7 +34,9 @@ QUERY_PROMPT = """Context:
 Query:
 {question}"""
 
+# uses local directory as root
 folder = "irvine_agendas_2025"
+# fetches models from ollama. models must be served on ollama service on the server machine locally.
 model = "llama3"
 
 class Server(HTTPServer):
@@ -50,12 +52,18 @@ class RequestHandler(BaseHTTPRequestHandler):
         super().__init__(request, client_address, server_class)
 
     def do_GET(self):
+        """
+        Handles news requests
+        """
         print("request received. headers: ", self.headers)
         request_type = self.headers.get('type') # deprecated feature
 
         self.do_news()
         
     def do_POST(self):
+        """
+        Handles query requests. POST is used for large context lengths.
+        """
         print("post request received", self.headers)
         content_length = int(self.headers['Content-Length'])
         context = self.rfile.read(content_length)
@@ -101,6 +109,10 @@ def get_agendas(folder, keywords):
     return fuzzy_search(news_agenda_fetch(folder), keywords)
         
 def get_news(folder, keywords):
+    """
+    Produces 4 news, returns list of dict {"headline": str, "original": str, "summary", str}
+    """
+    
     # returns the 4 agendas most relevant
     agendas = get_agendas(folder, keywords)
     content = []
