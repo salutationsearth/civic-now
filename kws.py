@@ -40,7 +40,7 @@ def fuzzy_search(agendas, keywords):
     """
 
     best_match = [{}, {}, {}, {}]
-    best_scores = [0, 0, 0, 0]
+    best_scores = [-99999, -99999, -99999, -99999]
 
     for agenda in agendas:
         text = agenda["text"].lower()
@@ -48,12 +48,17 @@ def fuzzy_search(agendas, keywords):
 
         for i in range(len(best_scores)):
             if score > best_scores[i]:
-                best_scores[i] = score
-                best_match[i] = agenda
+                best_match.insert(i, agenda)
+                best_scores.insert(i, score)
+                best_match.pop()
+                best_scores.pop()
                 break
 
     print(f"Best match score: {best_scores}")
     print(f"Best matches: {best_match}")
+    
+    best_match = [match for match in best_match if match != {}]
+
     return best_match if best_match else {}
 
 

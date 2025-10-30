@@ -53,14 +53,15 @@ class RequestHandler(BaseHTTPRequestHandler):
         print("request received. headers: ", self.headers)
         request_type = self.headers.get('type')
 
-        if request_type == 'query':
-            self.do_query()
-        elif request_type == 'news':
-            self.do_news()
+        self.do_news()
+        
+    def do_POST(self):
+        print("post request received", self.headers)
+        content_length = int(self.headers['Content-Length'])
+        context = self.rfile.read(content_length)
 
-    def do_query(self):
         user_query = self.headers.get('query')
-        context = self.headers.get('context')
+        # context = self.headers.get('context')
         print('querying with context', context)
         
         self.send_response(200)
@@ -81,6 +82,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         
         self.wfile.write(response_json.encode())
 
+        
     def do_news(self):
         keywords = self.headers.get('tags')
 
