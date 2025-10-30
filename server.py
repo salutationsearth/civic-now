@@ -56,11 +56,16 @@ class RequestHandler(BaseHTTPRequestHandler):
         Handles news requests
         """
         print("request received. headers: ", self.headers)
-        request_type = self.headers.get('type') # deprecated feature
+        request_type = self.headers.get('type')
 
-        self.do_news()
+        if request_type == "news":
+            self.do_news()
         
     def do_POST(self):
+        request_type = self.headers.get('type')
+
+        if request_type != "query":
+            return
         """
         Handles query requests. POST is used for large context lengths.
         """
