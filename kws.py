@@ -33,31 +33,28 @@ def news_agenda_fetch(folder_path, n=4):
 
 
 
-def fuzzy_search(agendas, keyword_list):
+def fuzzy_search(agendas, keywords):
     """
     Perform fuzzy search on the agenda text corpus and return
     the single best-matching agenda (dict with one entry).
     """
 
-    keywords = ""
+    best_match = [{}, {}, {}, {}]
+    best_scores = [0, 0, 0, 0]
 
-    for k in keyword_list:
-        keywords = keywrds + k
-    
-    keywords = keywords.lower()
-
-    best_match = None
-    best_score = 0
-
-    for data in agendas.items():
-        text = data["text"].lower()
+    for agenda in agendas:
+        text = agenda["text"].lower()
         score = fuzz.partial_ratio(text, keywords)
-        if score > best_score:
-            best_score = score
-            best_match = data
 
-    print(f"Best match score: {best_score}")
-    return {best_match[0]: best_match[1]} if best_match else {}
+        for i in range(len(best_scores)):
+            if score > best_scores[i]:
+                best_scores[i] = score
+                best_match[i] = agenda
+                break
+
+    print(f"Best match score: {best_scores}")
+    print(f"Best matches: {best_match}")
+    return best_match if best_match else {}
 
 
 if __name__ == "__main__":

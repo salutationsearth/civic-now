@@ -1,20 +1,23 @@
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import json
 
-from kws import news_agenda_fetch, news_agenda_fetch
+from kws import news_agenda_fetch, fuzzy_search
 
-NEWS_SYSTEM_PROMPT = """You are an AI assistant that produces news headlines from city council meeting agendas.
+import ollama
+
+NEWS_SYSTEM_PROMPT = {'role': 'system', 'content': """You are an AI assistant that produces news headlines from city council meeting agendas.
 - Always select the most important topics for headlines
-- Follow the JSON format provided"""
+- Provide the response to the user's query only. Do not add any other phrases."""}
 
-NEWS_PROMPT = """Please produce a news headline from this document. Return your response with property "tag" and "headline".
+NEWS_PROMPT = """Please produce a news headline from this document. The headline should be a short phrase or sentence
 
 Agenda:
 {agenda}"""
 
-SUMMARY_SYSTEM_PROMPT = """You are an AI assistant that answers questions using information from city council meeting agendas.
+SUMMARY_SYSTEM_PROMPT = {'role': 'system', 'content': """You are an AI assistant that answers questions using information from city council meeting agendas.
 - Use information provided in context for your response
-- Only add information relevant to the headlines in your response"""
+- Only add information relevant to the headlines in your response
+- Provide the response to the user's query only. Do not add any other phrases."""}
 
 SUMMARY_PROMPT = """Context:
 {agenda}
@@ -22,7 +25,17 @@ SUMMARY_PROMPT = """Context:
 Query:
 Produce a summary of the city council meeting agenda."""
 
+QUERY_SYSTEM_PROMPT = {'role': 'system', 'content': """You are an AI assistant that answers questions using information from city council meeting agendas.
+- Use information provided in context for your response"""}
+
+QUERY_PROMPT = """Context:
+{context}
+
+Query:
+{question}"""
+
 folder = "irvine_agendas_2025"
+model = "llama3"
 
 class Server(HTTPServer):
     def __init__(self, address, request_handler):
@@ -37,6 +50,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         super().__init__(request, client_address, server_class)
 
     def do_GET(self):
+        print("request received. headers: ", self.headers)
         request_type = self.headers.get('type')
 
         if request_type == 'query':
@@ -47,23 +61,13 @@ class RequestHandler(BaseHTTPRequestHandler):
     def do_query(self):
         user_query = self.headers.get('query')
         context = self.headers.get('context')
+        print('querying with context', context)
         
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.end_headers()
 
-        print("{}".format(user_query))
-
-        QUERY_SYSTEM_PROMPT = """You are an AI assistant that answers questions using information from city council meeting agendas.
-        - Use information provided in context for your response"""
-
-        QUERY_PROMPT = """Context:
-        {context}
-
-        Query:
-        {question}"""
-
-        question = QUERY_PROMPT.format(context, user_query)
+        question = QUERY_PROMPT.format(context=context, question=user_query)
         
         response = ollama.chat(model, messages=[
                 QUERY_SYSTEM_PROMPT,
@@ -71,25 +75,21 @@ class RequestHandler(BaseHTTPRequestHandler):
                     'role': 'user',
                     'content': question,
                 },
-            ])
+            ]).message.content
 
         response_json = json.dumps({'type': 'query', 'content': response})
         
         self.wfile.write(response_json.encode())
 
     def do_news(self):
-        keywords = json.loads(self.headers.get('tags'))
-        
+        keywords = self.headers.get('tags')
+
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.end_headers()
 
         response = {'type': 'news', 'content' : get_news(folder, keywords)}
 
-        """content = [{'tag': 'Taxes', 'headline': 'Taxes raised by 500%'},
-            {'tag': 'Parks', 'headline': 'All parks will be destroyed'},
-            {'tag': 'Roads', 'headline': '$50 billion to build new roads that puncture tires'},
-            {'tag': 'Transit', 'headline': '$10 trillion will be spent on new buses that will never arrive'}]"""
         response_json = json.dumps(response)
         news = json.loads(response_json)
         
@@ -100,19 +100,20 @@ def get_agendas(folder, keywords):
         
 def get_news(folder, keywords):
     agendas = get_agendas(folder, keywords)
+    content = []
 
     for agenda in agendas:
-        headline_prompt = NEWS_PROMPT.format(agenda['text'])
+        headline_prompt = NEWS_PROMPT.format(agenda=agenda['text'])
 
         headline = ollama.chat(model, messages=[
             NEWS_SYSTEM_PROMPT,
             {
                 'role': 'user',
-                'content': question,
+                'content': headline_prompt,
             },
-        ])
+        ]).message.content
 
-        summary_prompt = SUMMARY_PROMPT.format(agenda['text'])
+        summary_prompt = SUMMARY_PROMPT.format(agenda=agenda['text'])
 
         summary = ollama.chat(model, messages=[
             SUMMARY_SYSTEM_PROMPT,
@@ -120,7 +121,7 @@ def get_news(folder, keywords):
                 'role': 'user',
                 'content': summary_prompt
             },
-        ])
+        ]).message.content
 
         response = {'headline': headline,
                     'original': agenda['link'],
