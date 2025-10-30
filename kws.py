@@ -42,10 +42,11 @@ def fuzzy_search(agendas, keywords):
     best_match = [{}, {}, {}, {}]
     best_scores = [-99999, -99999, -99999, -99999]
 
+    # rank the top 4 agenda by fuzz partial ratio score
     for agenda in agendas:
         text = agenda["text"].lower()
         score = fuzz.partial_ratio(text, keywords)
-
+        
         for i in range(len(best_scores)):
             if score > best_scores[i]:
                 best_match.insert(i, agenda)
@@ -56,7 +57,8 @@ def fuzzy_search(agendas, keywords):
 
     print(f"Best match score: {best_scores}")
     print(f"Best matches: {best_match}")
-    
+
+    # remove empty if the set of agenda length < 4
     best_match = [match for match in best_match if match != {}]
 
     return best_match if best_match else {}

@@ -51,7 +51,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         print("request received. headers: ", self.headers)
-        request_type = self.headers.get('type')
+        request_type = self.headers.get('type') # deprecated feature
 
         self.do_news()
         
@@ -101,9 +101,11 @@ def get_agendas(folder, keywords):
     return fuzzy_search(news_agenda_fetch(folder), keywords)
         
 def get_news(folder, keywords):
+    # returns the 4 agendas most relevant
     agendas = get_agendas(folder, keywords)
     content = []
 
+    # produces a headline and summary using LLM for each agenda
     for agenda in agendas:
         headline_prompt = NEWS_PROMPT.format(agenda=agenda['text'])
 
